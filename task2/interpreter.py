@@ -129,39 +129,44 @@ class Parser:
     def term(self):
         """Парсер для 'term' правил граматики. У нашому випадку - це цілі числа."""
         token = self.current_token
-        self.eat(TokenType.INTEGER)
-        return Num(token)
-
-    def expr(self):
-        """Парсер для арифметичних виразів."""
-        if self.current_token.type == TokenType.LEFT_PAREN:
+        if token.type == TokenType.INTEGER:
+            self.eat(TokenType.INTEGER)
+            return Num(token)
+        elif token.type == TokenType.LEFT_PAREN:
             self.eat(TokenType.LEFT_PAREN)
             node = self.expr()
             self.eat(TokenType.RIGHT_PAREN)
-        elif self.current_token.type == TokenType.INTEGER:
-            node = self.term()
+            return node
         else:
             raise self.error()
 
-        while self.current_token.type in (TokenType.PLUS, TokenType.MINUS, TokenType.STAR, TokenType.SLASH):
+    def factor(self):
+        """Парсер для множення та ділення виразів."""
+        node = self.term()
+
+        while self.current_token.type in (TokenType.STAR, TokenType.SLASH):
+            token = self.current_token
+            if token.type == TokenType.STAR:
+                self.eat(TokenType.STAR)
+            elif token.type == TokenType.SLASH:
+                self.eat(TokenType.SLASH)
+
+            node = BinOp(left=node, op=token, right=self.term())
+
+        return node
+
+    def expr(self):
+        """Парсер для додавання та віднімання виразів."""
+        node = self.factor()
+
+        while self.current_token.type in (TokenType.PLUS, TokenType.MINUS):
             token = self.current_token
             if token.type == TokenType.PLUS:
                 self.eat(TokenType.PLUS)
             elif token.type == TokenType.MINUS:
                 self.eat(TokenType.MINUS)
-            elif token.type == TokenType.STAR:
-                self.eat(TokenType.STAR)
-            elif token.type == TokenType.SLASH:
-                self.eat(TokenType.SLASH)
 
-            if self.current_token.type == TokenType.LEFT_PAREN:
-                self.eat(TokenType.LEFT_PAREN)
-                node = BinOp(left=node, op=token, right=self.expr())
-                self.eat(TokenType.RIGHT_PAREN)
-            elif self.current_token.type == TokenType.INTEGER:
-                node = BinOp(left=node, op=token, right=self.term())
-            else:
-                raise self.error()
+            node = BinOp(left=node, op=token, right=self.factor())
 
         return node
 
